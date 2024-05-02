@@ -7,7 +7,8 @@ import java.util.HashSet;
 import java.awt.image.*;
 //
 public class jimmyjourney {
-    //formality class, please
+    //formality class, please ignore
+    //大家好,今天我想要来介绍
     static JFrame frame;
     public static void main(String[] args) throws IOException{
         //run stuff
@@ -18,6 +19,7 @@ public class jimmyjourney {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
         frame.setLocationRelativeTo(null);
+        frame.setUndecorated(true);
         frame.setVisible(true);
     }
 }
@@ -28,7 +30,7 @@ class RealFrame extends JPanel implements ActionListener, MouseListener, KeyList
     static Player p;
     static Level[] levels;
     static Room room;  //what room we are in
-    final int xsz = 1280, ysz = 720;
+    static final int xsz = 1280, ysz = 720;
     public RealFrame() throws IOException{
         art = new Timer(10, this);
         p = new Player();
@@ -36,7 +38,7 @@ class RealFrame extends JPanel implements ActionListener, MouseListener, KeyList
         //define levels[0]
         levels[0] = new Level(new Color(25, 15, 15));
         //define levels[1]
-        levels[1] = new Level(new Color(50, 200, 50));
+        levels[1] = new Level(new Color(50, 175, 50));
         //define levels[2]
         levels[2] = new Level(new Color(200, 200, 200));
         load();
@@ -59,8 +61,8 @@ class RealFrame extends JPanel implements ActionListener, MouseListener, KeyList
 
             if (!line.equals("")) {  //data
                 Room uh = new Room();
-                int r = bruh.nextInt(), c = bruh.nextInt();
-                uh.r = r; uh.c = c;
+                int x = bruh.nextInt(), y = bruh.nextInt();
+                uh.x = x; uh.y = y;
                 //TODO:read more data
                 //PREREQ: figure out enemy data
                 levels[laval].rooms.add(uh);
@@ -80,7 +82,7 @@ class RealFrame extends JPanel implements ActionListener, MouseListener, KeyList
         g.fillRect(0, 0, xsz, ysz);
         g.setColor(Color.WHITE);
         g.drawString("LEVEL" + lvl, 100, 100);
-        g.drawString("ROOM " + room.r + ", " + room.c, 200, 200);
+        g.drawString("ROOM " + room.x + ", " + room.y, 200, 200);
         p.render(g);
     }
     
@@ -123,7 +125,7 @@ class Level {
     }
 }
 class Player {
-    int x, y;
+    int x = 50, y = 50;
     final int speed = 5;
     final int width = 20, height = 60;
     boolean swap = true;
@@ -131,7 +133,6 @@ class Player {
     private final int W = 0, A = 1, S = 2, D = 3;
     boolean[] wasd = new boolean[4];
     
-
     public void input(KeyEvent e) {  //stuff happened
         if (e.getKeyCode() == (KeyEvent.VK_W)) {
             wasd[W] = true;
@@ -156,6 +157,7 @@ class Player {
         }
     }
     public void update() {
+
         //pos
         int dy = 0, dx = 0;
         if (wasd[W]) { dy -= speed; }
@@ -167,20 +169,75 @@ class Player {
             else { dx = dx * 4/5; dy = dy * 3/5; }
             swap = !swap;
         }
+
+        if (x + dx > RealFrame.xsz) {
+            boolean happen = false;
+            for (Room v : RealFrame.levels[RealFrame.lvl].rooms) {
+                if (v.x == RealFrame.room.x + 1 && v.y == RealFrame.room.y) {
+                    RealFrame.room = v;
+                    x = 0;
+                    happen = true;
+                    break;
+                }
+            }
+            if (!happen) { dx = 0; }
+        }
+        if (x + dx < 0) {
+            boolean happen = false;
+            for (Room v : RealFrame.levels[RealFrame.lvl].rooms) {
+                if (v.x == RealFrame.room.x - 1 && v.y == RealFrame.room.y) {
+                    RealFrame.room = v;
+                    x = RealFrame.xsz;
+                    happen = true;
+                    break;
+                }
+            }
+            if (!happen) {
+                dx = 0;
+            }
+        }
+        if (y + dy > RealFrame.ysz) {
+            boolean happen = false;
+            for (Room v : RealFrame.levels[RealFrame.lvl].rooms) {
+                if (v.y == RealFrame.room.y + 1 && v.x == RealFrame.room.x) {
+                    RealFrame.room = v;
+                    y = 0;
+                    happen = true;
+                    break;
+                }
+            }
+            if (!happen) { dy = 0; }
+        }
+        if (y + dy < 0) {
+            boolean happen = false;
+            for (Room v : RealFrame.levels[RealFrame.lvl].rooms) {
+                if (v.y == RealFrame.room.y - 1 && v.x == RealFrame.room.x) {
+                    RealFrame.room = v;
+                    y = RealFrame.ysz;
+                    happen = true;
+                    break;
+                }
+            }
+            if (!happen) {
+                dy = 0;
+            }
+        }
         x += dx;
         y += dy;
 
     }
     public void render(Graphics g) {
         g.setColor(Color.BLUE);
-        g.fillRect(x, y, width, height);
+        g.fillRect(x-width/2, y-height/2, width, height);
     }
 }
 class Room {
     Enemy[] enemies;
     //i assume we dont actually need that much here
-    int r, c;
+    int x, y;
 }
 class Enemy {
     //do later
+    Rectangle hb;
+    
 }
