@@ -12,7 +12,6 @@ import javax.imageio.*;
 //
 public class jimmyjourney {
     //formality class, please ignore
-    //大家好,今天我想要来介绍
     static JFrame frame;
     public static void main(String[] args) throws IOException{
         //run stuff
@@ -60,15 +59,10 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
     void load() throws IOException{
         int laval = 0;
         Scanner sc = new Scanner(new File("level.txt"));
-        //do not delete these nextLines()
-        sc.nextLine();
-        sc.nextLine();
-        sc.nextLine();
-        sc.nextLine();
         while (sc.hasNextLine()) {
             String line = sc.nextLine();
             Scanner bruh = new Scanner(line);
-
+			if (line.length() != 0 && line.charAt(0) == '/') { continue; }
             if (!line.equals("")) {  //data
                 Room uh = new Room();
                 int x = bruh.nextInt(), y = bruh.nextInt();
@@ -105,6 +99,76 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
             bruh.close();
         }
         sc.close();
+
+		for (Room r1 : RealFrame.levels[RealFrame.lvl].rooms) {
+			for (Room r2 : RealFrame.levels[RealFrame.lvl].rooms) {
+				if (r1.x == r2.x && r1.y == r2.y-1) {
+					r2.dWoll = false;
+				}
+				if (r1.x == r2.x && r1.y == r2.y+1) {
+					r2.uWoll = false;
+				}
+				if (r1.x == r2.x+1 && r1.y == r2.y) {
+					r2.rWoll = false;
+				}
+				if (r1.x == r2.x-1 && r1.y == r2.y) {
+					r2.lWoll = false;
+				}
+			}
+		}
+
+		Rectangle vertical1 = new Rectangle(0,0,64,720);
+		Rectangle vertical2 = new Rectangle(1280-64,0,64,720);
+
+		Rectangle verticalHole1 = new Rectangle(0,0,64,64*4);
+		Rectangle verticalHole2 = new Rectangle(0,720-64*4,64,64*4);
+
+		Rectangle verticalHole3 = new Rectangle(1280-64,0,64,64*4);
+		Rectangle verticalHole4 = new Rectangle(1280-64,720-64*4,64,64*4);
+
+		Rectangle horizontal1 = new Rectangle(0,0,1280,64);
+		Rectangle horizontal2 = new Rectangle(0,720-64,1280,64);
+
+		Rectangle horizontalHole1 = new Rectangle(0,0,64*9,64);
+		Rectangle horizontalHole2 = new Rectangle(1280-64*9,0,64*9,64);
+
+		Rectangle horizontalHole3 = new Rectangle(0,720-64,64*9,64);
+		Rectangle horizontalHole4 = new Rectangle(1280-64*9,720-64,64*9,64);
+
+		for (Room r : RealFrame.levels[RealFrame.lvl].rooms) {
+			if (r.dWoll) {
+				r.walls.add(horizontal1);
+			}
+			else {
+				r.walls.add(horizontalHole1);
+				r.walls.add(horizontalHole2);
+			}
+
+			if (r.uWoll) {
+				r.walls.add(horizontal2);
+			}
+			else {
+				r.walls.add(horizontalHole3);
+				r.walls.add(horizontalHole4);
+			}
+
+			if (r.lWoll) {
+				r.walls.add(vertical1);
+			}
+			else {
+				r.walls.add(verticalHole1);
+				r.walls.add(verticalHole2);
+			}
+
+			if (r.rWoll) {
+				r.walls.add(vertical2);
+			}
+			else {
+				r.walls.add(verticalHole3);
+				r.walls.add(verticalHole4);
+			}
+		}
+		
     }
 
     public void paintComponent(Graphics g) {
@@ -170,7 +234,7 @@ class Level {
 	}
 }
 class Player {
-    int x = 50, y = 50;
+    int x = 200, y = 200;
     final int speed = 5;
     final int width = 20, height = 60;
 	int attackTimer;
@@ -287,7 +351,24 @@ class Player {
             }
         }
         x += dx;
-        y += dy;
+		rect.setLocation(x-width/2,y-height/2);
+		for (Rectangle r : RealFrame.room.walls) {
+			if (rect.intersects(r)) {
+				x -= dx;
+				rect.setLocation(x-width/2,y-height/2);
+			}
+		}
+
+		y += dy;
+		rect.setLocation(x-width/2,y-height/2);
+		for (Rectangle r : RealFrame.room.walls) {
+			if (rect.intersects(r)) {
+				y -= dy;
+				rect.setLocation(x-width/2,y-height/2);
+			}
+		}
+
+
         if (attackTimer > 0) {
 			attackTimer++;
 			if (attackTimer > 20) {
@@ -297,7 +378,7 @@ class Player {
 				attackTimer = 0;
 			}
 		}
-        rect.setLocation(x,y);
+
 		if (direction) {
 			swordRect.setLocation(x+20,y+20);
 		}
@@ -308,7 +389,8 @@ class Player {
     }
     public void render(Graphics g) {
         g.setColor(Color.BLUE);
-        g.fillRect(x-width/2, y-height/2, width, height);//draw sword
+        //g.fillRect(x-width/2, y-height/2, width, height);//draw sword
+		g.fillRect(rect.x,rect.y,rect.width,rect.height);
 		//i died doing this
         Graphics2D g2 = (Graphics2D)(g);
 		g2.setColor(new Color(150,100,50));
@@ -337,9 +419,11 @@ class Player {
 }
 class Room {
     ArrayList<Jimmy> jimmies = new ArrayList<Jimmy>();
+	ArrayList<Rectangle> walls = new ArrayList<Rectangle>();
 	String txt = "";
 	int sx, sy;
 	Image woll;
+	boolean lWoll = true, rWoll = true, uWoll = true, dWoll = true;
     void render(Graphics g) {
         for (int j = 0; j < jimmies.size(); j++) {
             jimmies.get(j).update(RealFrame.p);
@@ -349,23 +433,10 @@ class Room {
             jimmies.get(j).bump(jimmies);
         }
 		if (txt != "") { g.drawString(txt, sx, sy); }
-		boolean lWoll = true,rWoll = true,  uWoll = true, dWoll = true;
-		for (Room r : RealFrame.levels[RealFrame.lvl].rooms) {
-			if (r.x == x && r.y == y-1) {
-				dWoll = false;
-			}
-			if (r.x == x && r.y == y+1) {
-				uWoll = false;
-			}
-			if (r.x == x+1 && r.y == y) {
-				rWoll = false;
-			}
-			if (r.x == x-1 && r.y == y) {
-				lWoll = false;
-			}
-		}
-		System.out.println(lWoll + " " + rWoll + " " + uWoll + " " + dWoll);
+
+		//System.out.println(lWoll + " " + rWoll + " " + uWoll + " " + dWoll);
 		//leftWoll
+		/* 
 		if (lWoll) {
 			for (int y = 0; y + 64 <= 720; y+=64) {
 				g.drawImage(woll, 0, y, null);
@@ -413,9 +484,25 @@ class Room {
 			for (int y = 640 + 64; y + 64 <= 1280; y += 64) {
 				g.drawImage(woll, y, 0, null);
 			}
+		}*/
+		for (Rectangle r : walls) {
+			//g.fillRect(r.x,r.y,r.width,r.height);
+			renderWall(g, r, woll);
 		}
     }
     int x, y;
+
+	public void renderWall(Graphics g, Rectangle r, Image image) {
+		int ver = r.height/image.getHeight(null);
+		int hor = r.width/image.getWidth(null);
+		for (int i=0; i<hor; i++) {
+			for (int j=0; j<ver; j++) {
+				g.drawImage(image, 
+				i*image.getHeight(null)+r.x, 
+				j*image.getWidth(null)+r.y, null);
+			}
+		}
+	}
 }
 class HealthBar
 {
@@ -759,8 +846,6 @@ class TreeJimmy extends Jimmy
 	}
 }
 
-
-
 class Boss extends Jimmy
 {
 	int currentAttack;
@@ -933,11 +1018,118 @@ class Boss extends Jimmy
 	}
 }
 
+class Demon extends Jimmy{
+	int currentAttack;
+	int previousAttack;
+	ArrayList<Point> spikePoints = new ArrayList<Point>();
+	ArrayList<Point> shockPoints = new ArrayList<Point>();
+	int wings;
+	
+	public Demon(double a, double b, int h) {
+		x = a;
+		y = b;
+		health = maxHealth = h;
+		knockback = 0;
+		normalImage = Sprite.boss;
+		hurtImage = Sprite.bossHurt;
+		image = normalImage;
+		rect = new Rectangle((int)x,(int)y,45,65);
+		bar = new HealthBar((int)x,(int)y-50,100,4,100,1);
+	}
+	
+	public void teleport() {
+		x = Math.random()*1000+100;
+		y = Math.random()*500+64;
+		rect.setLocation((int)x,(int)y);
+	}
+	
+	public void update(Player p) {
+		//0 is shockwave attack
+		//1 is spikes attack
+		//
+		if (cooldown == -150) { //cooldown
+			currentAttack = (int)(Math.random()*3);
+			if (currentAttack == previousAttack) {
+				currentAttack = (int)(Math.random()*3); //smaller chance of using the same attack twice
+			}
+			previousAttack = currentAttack;
+			
+			teleport();
+			//shockwave
+			if (currentAttack == 0) {
+				cooldown = 200;
+			}
+			//spikes
+			if (currentAttack == 1) {
+				x = RealFrame.xsz / 2;
+				y = RealFrame.ysz / 2;
+				rect.setLocation((int) x, (int) y);
+				cooldown = 300;
+				angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY());
+			}
+		}
+		if (cooldown == 0) {
+			currentAttack = -1; //resting
+			spikePoints = new ArrayList<Point>();
+			shockPoints = new ArrayList<Point>();
+		}
+		if (currentAttack == 0 && cooldown % 50 == 0) {  //
+			teleport();
+			angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY()) + Math.random() - 0.5;
+			Projectile magic = new Projectile(
+			new double[]{rect.getCenterX(),rect.getCenterY()},
+			new double[]{Math.sin(angle)*5,Math.cos(angle)*5},
+			new double[]{0,0},
+			"shockwave"
+			);
+			Projectile.projectiles.add(magic);
+		}
+		if (currentAttack == 1 && cooldown % 10 == 0) {
+			if (cooldown % 50 == 0) {
+
+			}
+		}
+		if (currentAttack == 2) {  //rush
+			x += Math.sin(angle)*15;
+			y += Math.cos(angle)*15;
+			if (x < -150 || x > 1350 || y < -150 || y > 750) {
+				//do not teleport
+				teleport();
+				angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY());
+			}
+			if (rect.intersects(p.rect)) {
+				p.health -= 0.1;
+				p.hurtTimer = 10;
+			}
+		}
+		
+		cooldown--;
+		bar.x = (int)x-27;
+		bar.y = (int)y-20;
+		rect.setLocation((int)x,(int)y);
+		
+		wings++;
+		if (wings > 60) {
+			wings = 0;
+		}
+	}
+	
+	public void render(Graphics g) {
+		//render projectiles
+
+		
+		
+		
+		g.drawImage(image,(int)x,(int)y,null);
+		bar.percent = (int)((double)health/maxHealth*100);
+		bar.render(g);
+	}
+}
 class Sprite
 {
 	static Image jimmyNormal, jimmyHurt, jimmyBig, jimmyBigHurt, jimmyGreen,
 	 jimmyBlue, jimmyWhite, jimmyTree, jimmyTreeHurt, boss, bossHurt, heart, soulSoil,
-	 netherrack;
+	 netherrack, demon;
 
 	public static void init() {
 		try {
@@ -957,6 +1149,8 @@ class Sprite
 			heart = ImageIO.read(new File("heart.png"));
 			soulSoil = ImageIO.read(new File("soul_soil.png"));
 			netherrack = ImageIO.read(new File("netherrack.png"));
+
+			demon = ImageIO.read(new File("heart.png"));
 			System.out.println("working");
 			
 			
@@ -1030,6 +1224,12 @@ class Projectile
 			
 			g.setStroke(new BasicStroke(5));
 			g.drawLine((int)(tX+vel[0]),(int)(tY+vel[1]),(int)(tX+vel[0]*2),(int)(tY+vel[1]*2));
+		}
+		if (type.equals("shock")) {
+
+		}
+		if (type.equals("spike")) {
+			
 		}
 	}
 }
