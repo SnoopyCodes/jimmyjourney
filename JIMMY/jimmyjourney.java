@@ -26,6 +26,7 @@ public class jimmyjourney {
         frame.setVisible(true);
     }
 }
+
 class RealFrame extends JPanel implements ActionListener, KeyListener {
     final static int nLevels = 3;  //numlevels
     private Timer art;
@@ -90,7 +91,9 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
                         uh.jimmies.add(new MagicJimmy(xc, yc));
                     }   else if (type.equals("boss")) {
                         uh.jimmies.add(new Boss(xc, yc, 35));
-                    }
+                    }	else if (type.equals("demon")) {
+						uh.jimmies.add(new Demon(xc, yc, 20));
+					}
                 }
 				uh.woll = levels[lvl].woll;
             }   else {
@@ -203,12 +206,8 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
         p.update();
         repaint();
     }
-    public void keyPressed(KeyEvent e) {
-        p.input(e);
-    }
-    public void keyReleased(KeyEvent e) {
-        p.unput(e);
-    }
+    public void keyPressed(KeyEvent e) { p.input(e);}
+    public void keyReleased(KeyEvent e) { p.unput(e); }
     public void keyTyped(KeyEvent e){}
 	
 }
@@ -233,6 +232,7 @@ class Level {
 		woll = w;
 	}
 }
+
 class Player {
     int x = 200, y = 200;
     final int speed = 5;
@@ -249,6 +249,7 @@ class Player {
     double health = 20;
     private final int W = 0, A = 1, S = 2, D = 3;
     boolean[] wasd = new boolean[4];
+	int[] knockback = new int[2];
     
     public void input(KeyEvent e) {  //stuff happened
         if (e.getKeyCode() == (KeyEvent.VK_W)) {
@@ -287,7 +288,7 @@ class Player {
 			System.exit(0);
 			System.out.println("thou hast perished");
 		}
-        int dy = 0, dx = 0;
+        int dx = knockback[0], dy = knockback[1];
         if (wasd[W]) { dy -= speed; }
         if (wasd[A]) { dx -= speed; }
         if (wasd[S]) { dy += speed; }
@@ -367,6 +368,9 @@ class Player {
 				rect.setLocation(x-width/2,y-height/2);
 			}
 		}
+
+		knockback[0] /= 2;
+		knockback[1] /= 2;
 
 
         if (attackTimer > 0) {
@@ -504,6 +508,7 @@ class Room {
 		}
 	}
 }
+
 class HealthBar
 {
 	int x, y, length, height, percent, border;
@@ -524,6 +529,7 @@ class HealthBar
 		g.fillRect(x,y,length*percent/100,height);
 	}
 }
+
 class Jimmy
 {
 	int health, maxHealth;
@@ -539,8 +545,7 @@ class Jimmy
 	
 	//no way an actual use for polymorphism
 	public Jimmy() {}
-	public void update(Player p) {
-	}
+	public void update(Player p) {}
 	public void render(Graphics g) {
 		g.drawImage(image,(int)x,(int)y,null);
 		bar.percent = (int)((double)health/maxHealth*100);
@@ -587,7 +592,6 @@ class Jimmy
 	
 }
 
-
 class MeleeJimmy extends Jimmy
 {
 	public MeleeJimmy(double a, double b) {
@@ -628,7 +632,6 @@ class MeleeJimmy extends Jimmy
 	}
 }
 
-
 class BigMeleeJimmy extends MeleeJimmy
 {
 	public BigMeleeJimmy(double a, double b) {
@@ -667,7 +670,6 @@ class BigMeleeJimmy extends MeleeJimmy
 		}
 	}
 }
-
 
 class LightningJimmy extends Jimmy
 {
@@ -747,7 +749,6 @@ class LightningJimmy extends Jimmy
 		bar.render(g);
 	}
 }
-
 
 class LaserJimmy extends Jimmy
 {
@@ -1021,9 +1022,8 @@ class Boss extends Jimmy
 class Demon extends Jimmy{
 	int currentAttack;
 	int previousAttack;
-	ArrayList<Point> spikePoints = new ArrayList<Point>();
+	ArrayList<Spike> spikePoints = new ArrayList<Spike>();
 	ArrayList<Point> shockPoints = new ArrayList<Point>();
-	int wings;
 	
 	public Demon(double a, double b, int h) {
 		x = a;
@@ -1044,20 +1044,20 @@ class Demon extends Jimmy{
 	}
 	
 	public void update(Player p) {
-		//0 is shockwave attack
+		//2 is shockwave attack
 		//1 is spikes attack
-		//
+		//0 is rush
 		if (cooldown == -150) { //cooldown
 			currentAttack = (int)(Math.random()*3);
 			if (currentAttack == previousAttack) {
 				currentAttack = (int)(Math.random()*3); //smaller chance of using the same attack twice
 			}
+			currentAttack = 0;
 			previousAttack = currentAttack;
 			
-			teleport();
-			//shockwave
+			//rush
 			if (currentAttack == 0) {
-				cooldown = 200;
+				cooldown = 50;
 			}
 			//spikes
 			if (currentAttack == 1) {
@@ -1068,12 +1068,7 @@ class Demon extends Jimmy{
 				angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY());
 			}
 		}
-		if (cooldown == 0) {
-			currentAttack = -1; //resting
-			spikePoints = new ArrayList<Point>();
-			shockPoints = new ArrayList<Point>();
-		}
-		if (currentAttack == 0 && cooldown % 50 == 0) {  //
+		if (currentAttack == 2 && cooldown % 50 == 0) {  //shockwave
 			teleport();
 			angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY()) + Math.random() - 0.5;
 			Projectile magic = new Projectile(
@@ -1082,24 +1077,50 @@ class Demon extends Jimmy{
 			new double[]{0,0},
 			"shockwave"
 			);
-			Projectile.projectiles.add(magic);
+			// Projectile.projectiles.add(magic);
+		}
+		if (cooldown == 0) {
+			currentAttack = -1; //resting
+			spikePoints = new ArrayList<Spike>();
+			shockPoints = new ArrayList<Point>();
 		}
 		if (currentAttack == 1 && cooldown % 10 == 0) {
+			spikePoints.add(new Spike((int)(64 + Math.random() * 700), (int)(64 + Math.random() * 700), 50));
 			if (cooldown % 50 == 0) {
+				spikePoints.add(new Spike(RealFrame.p.x, RealFrame.p.y, 50));
 
 			}
 		}
-		if (currentAttack == 2) {  //rush
-			x += Math.sin(angle)*15;
-			y += Math.cos(angle)*15;
-			if (x < -150 || x > 1350 || y < -150 || y > 750) {
-				//do not teleport
-				teleport();
-				angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY());
+		if (currentAttack == 0 && cooldown == 50) {
+			angle = Math.atan2(p.rect.getCenterY()-rect.getCenterY(),p.rect.getCenterX()-rect.getCenterX());
+		}
+		if (currentAttack == 0) {  //rush
+			x += Math.cos(angle)*20;
+			rect.setLocation((int)x,(int)y);
+			for (Rectangle r : RealFrame.room.walls) {
+				if (rect.intersects(r)) {
+					x -= Math.cos(angle)*20;
+					rect.setLocation((int)x,(int)y);
+				}
 			}
+
+			y += Math.sin(angle)*20;
+			rect.setLocation((int)x,(int)y);
+			for (Rectangle r : RealFrame.room.walls) {
+				if (rect.intersects(r)) {
+					y -= Math.sin(angle)*20;
+					rect.setLocation((int)x,(int)y);
+				}
+			}
+
 			if (rect.intersects(p.rect)) {
-				p.health -= 0.1;
-				p.hurtTimer = 10;
+				p.health -= 0.08;
+				p.hurtTimer = 1;
+				
+				p.knockback[0] = (int)(Math.cos(angle)*30);
+				p.knockback[1] = (int) (Math.sin(angle)*30);
+
+				//cooldown = 0;
 			}
 		}
 		
@@ -1107,22 +1128,47 @@ class Demon extends Jimmy{
 		bar.x = (int)x-27;
 		bar.y = (int)y-20;
 		rect.setLocation((int)x,(int)y);
-		
-		wings++;
-		if (wings > 60) {
-			wings = 0;
-		}
 	}
 	
 	public void render(Graphics g) {
 		//render projectiles
-
 		
 		
 		
 		g.drawImage(image,(int)x,(int)y,null);
 		bar.percent = (int)((double)health/maxHealth*100);
 		bar.render(g);
+	}
+
+	class Spike {
+		int timer;
+		Rectangle rect;
+		static Image sprite1, sprite2;
+		int phase = 0;
+		int x,y;
+
+		public Spike(int a, int b, int life) {
+			x = a; y = b; timer = life;
+			rect = new Rectangle(x,y,10,30);
+		}
+		void render(Graphics g) {
+			timer--;
+			if (timer == 50) { 
+				phase++;
+				if (rect.intersects(RealFrame.p.rect)) {
+					RealFrame.p.health -= 1;
+				}
+				RealFrame.room.walls.add(rect);
+
+			}
+			if (phase == 0) {
+				g.drawImage(sprite1, x-5, y, null);
+			}	else {
+				g.drawImage(sprite2, x-5, y, null);
+
+			}
+		}
+		
 	}
 }
 class Sprite
@@ -1160,6 +1206,7 @@ class Sprite
 		}
 	}
 }
+
 class Projectile
 {
 	static ArrayList<Projectile> projectiles = new ArrayList<Projectile>();
