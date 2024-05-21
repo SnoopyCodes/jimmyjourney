@@ -12,7 +12,6 @@ import javax.imageio.*;
 //
 public class jimmyjourney {
     //formality class, please ignore
-    //大家好,今天我想要来介绍
     static JFrame frame;
     public static void main(String[] args) throws IOException{
         //run stuff
@@ -27,6 +26,7 @@ public class jimmyjourney {
         frame.setVisible(true);
     }
 }
+
 class RealFrame extends JPanel implements ActionListener, KeyListener {
     final static int nLevels = 3;  //numlevels
     private Timer art;
@@ -44,9 +44,9 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
         //define levels[0]
         levels[0] = new Level(Sprite.soulSoil, Sprite.netherrack);
         //define levels[1]
-        levels[1] = new Level(Sprite.soulSoil, Sprite.netherrack);
+        levels[1] = new Level(Sprite.grass, Sprite.leaves);
         //define levels[2]
-        levels[2] = new Level(Sprite.soulSoil, Sprite.netherrack);
+        levels[2] = new Level(Sprite.obsidian, Sprite.endstone);
         load();
         setSize(xsz, ysz);
 		addKeyListener(this);
@@ -56,19 +56,17 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
         room = levels[lvl].begin;
         art.start();
     }
-
+	static void levelSwitch() {
+		lvl++;
+		room = levels[lvl].begin;
+	}
     void load() throws IOException{
         int laval = 0;
         Scanner sc = new Scanner(new File("level.txt"));
-        //do not delete these nextLines()
-        sc.nextLine();
-        sc.nextLine();
-        sc.nextLine();
-        sc.nextLine();
         while (sc.hasNextLine()) {
             String line = sc.nextLine();
             Scanner bruh = new Scanner(line);
-
+			if (line.length() != 0 && line.charAt(0) == '/') { continue; }
             if (!line.equals("")) {  //data
                 Room uh = new Room();
                 int x = bruh.nextInt(), y = bruh.nextInt();
@@ -96,18 +94,20 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
                         uh.jimmies.add(new MagicJimmy(xc, yc));
                     }   else if (type.equals("boss")) {
                         uh.jimmies.add(new Boss(xc, yc, 35));
-                    }
+                    }	else if (type.equals("demon")) {
+						uh.jimmies.add(new Demon(xc, yc, 20));
+					}
                 }
-				uh.woll = levels[lvl].woll;
+				uh.woll = levels[laval].woll;
             }   else {
                 laval++;
             }
             bruh.close();
         }
         sc.close();
-
-		for (Room r1 : RealFrame.levels[RealFrame.lvl].rooms) {
-			for (Room r2 : RealFrame.levels[RealFrame.lvl].rooms) {
+		for (int i = 0; i < 3; i++)
+		for (Room r1 : RealFrame.levels[i].rooms) {
+			for (Room r2 : RealFrame.levels[i].rooms) {
 				if (r1.x == r2.x && r1.y == r2.y-1) {
 					r2.dWoll = false;
 				}
@@ -140,8 +140,8 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
 
 		Rectangle horizontalHole3 = new Rectangle(0,720-64,64*9,64);
 		Rectangle horizontalHole4 = new Rectangle(1280-64*9,720-64,64*9,64);
-
-		for (Room r : RealFrame.levels[RealFrame.lvl].rooms) {
+		for (int i = 0; i < 3; i++)
+		for (Room r : RealFrame.levels[i].rooms) {
 			if (r.dWoll) {
 				r.walls.add(horizontal1);
 			}
@@ -180,6 +180,7 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
     public void paintComponent(Graphics g) {
 		for (int i = 0; i <= 1280 - 64; i += 128) {
 			for (int j = 0; j <= 720 - 64; j += 128) {
+				
 				g.drawImage(levels[lvl].bg, i, j, null);
 			}
 		}
@@ -209,12 +210,8 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
         p.update();
         repaint();
     }
-    public void keyPressed(KeyEvent e) {
-        p.input(e);
-    }
-    public void keyReleased(KeyEvent e) {
-        p.unput(e);
-    }
+    public void keyPressed(KeyEvent e) { p.input(e);}
+    public void keyReleased(KeyEvent e) { p.unput(e); }
     public void keyTyped(KeyEvent e){}
 	
 }
@@ -239,6 +236,7 @@ class Level {
 		woll = w;
 	}
 }
+
 class Player {
     int x = 200, y = 200;
     final int speed = 5;
@@ -255,6 +253,7 @@ class Player {
     double health = 20;
     private final int W = 0, A = 1, S = 2, D = 3;
     boolean[] wasd = new boolean[4];
+	int[] knockback = new int[2];
     
     public void input(KeyEvent e) {  //stuff happened
         if (e.getKeyCode() == (KeyEvent.VK_W)) {
@@ -272,8 +271,12 @@ class Player {
                 attacking = true;
                 attackTimer++;
             }
-        }
-        //add swinging
+        }	else if (e.getKeyCode() == KeyEvent.VK_R) {
+			health = 20;
+			attackTimer = 0;
+			attacking = true;
+			attackTimer++;
+		}
     }
     public void unput(KeyEvent e) {  //stuff unhappened
         if (e.getKeyCode() == (KeyEvent.VK_W)) {
@@ -287,13 +290,14 @@ class Player {
         }
     }
     public void update() {
+		if (hurtTimer != 0) { hurtTimer--; }
         bar.percent = (int)(health*5);
         //pos
         if (health <= 0) {
 			System.exit(0);
 			System.out.println("thou hast perished");
 		}
-        int dy = 0, dx = 0;
+        int dx = knockback[0], dy = knockback[1];
         if (wasd[W]) { dy -= speed; }
         if (wasd[A]) { dx -= speed; }
         if (wasd[S]) { dy += speed; }
@@ -374,6 +378,9 @@ class Player {
 			}
 		}
 
+		knockback[0] /= 2;
+		knockback[1] /= 2;
+
 
         if (attackTimer > 0) {
 			attackTimer++;
@@ -394,31 +401,52 @@ class Player {
 
     }
     public void render(Graphics g) {
-        g.setColor(Color.BLUE);
-        //g.fillRect(x-width/2, y-height/2, width, height);//draw sword
-		g.fillRect(rect.x,rect.y,rect.width,rect.height);
-		//i died doing this
-        Graphics2D g2 = (Graphics2D)(g);
-		g2.setColor(new Color(150,100,50));
-		g2.setStroke(new BasicStroke(5));
-        int handx;
-        if (direction) {
-			handx = x+10;
+        Graphics2D g2 = (Graphics2D) g;
+		//look at how much code is for the stick figure
+		int x = (int)(this.x - rect.getWidth() / 2);
+		int y = (int)(this.y - rect.getHeight() / 2);
+		//draw body
+		if (hurtTimer != 0) {
+			g2.setColor(new Color(100,0,0));
+		}
+		else if (RealFrame.lvl == 2) {
+			g2.setColor(Color.WHITE);
 		}
 		else {
-			handx = x-10;
+			g2.setColor(Color.BLACK);
 		}
+		g2.fillOval(x,y,20,20);
+		g2.setStroke(new BasicStroke(3));
+		g2.drawLine(x+10,y+10,x+10,y+45);
+		g2.drawLine(x+10,y+45,x,y+60);
+		g2.drawLine(x+10,y+45,x+20,y+60);
+		
+		//draw arms
+		int handx;
+		if (direction) {
+			handx = x+25;
+			g2.drawLine(x+10,y+25,x+25,y+40);
+			g2.drawLine(x+10,y+35,x+25,y+40);
+		}
+		else {
+			handx = x-5;
+			g2.drawLine(x+10,y+25,x-5,y+40);
+			g2.drawLine(x+10,y+35,x-5,y+40);
+		}
+		//draw sword
+		//i died doing this
+		g2.setColor(new Color(150,100,50));
 		if (direction && !attacking) {
-			g2.drawLine(handx, y-5, handx+30, y-15);
+			g2.drawLine(handx, y+40, handx+20, y+10);
 		}
 		if (direction && attacking) {
-			g2.drawLine(handx, y-5, handx+30, y);
+			g2.drawLine(handx, y+40, handx+35, y+31);
 		}
 		if (!direction && !attacking) {
-			g2.drawLine(handx, y-5, handx-30, y-15);
+			g2.drawLine(handx, y+40, handx-20, y+10);
 		}
 		if (!direction && attacking) {
-			g2.drawLine(handx, y-5, handx-30, y);
+			g2.drawLine(handx, y+40, handx-35, y+31);
 		}
         bar.render(g);
     }
@@ -434,11 +462,14 @@ class Room {
         for (int j = 0; j < jimmies.size(); j++) {
             jimmies.get(j).update(RealFrame.p);
             jimmies.get(j).checkHurt(RealFrame.p);
-			if (jimmies.get(j).health <= 0) { jimmies.remove(j); j--; continue; }
+			if (jimmies.get(j).health <= 0) {
+				jimmies.remove(j); j--;
+				continue;
+			}
             jimmies.get(j).render(g);
             jimmies.get(j).bump(jimmies);
         }
-		if (txt != "") { g.drawString(txt, sx, sy); }
+		{ g.drawString(txt, sx, sy); }
 
 		//System.out.println(lWoll + " " + rWoll + " " + uWoll + " " + dWoll);
 		//leftWoll
@@ -510,6 +541,7 @@ class Room {
 		}
 	}
 }
+
 class HealthBar
 {
 	int x, y, length, height, percent, border;
@@ -530,6 +562,7 @@ class HealthBar
 		g.fillRect(x,y,length*percent/100,height);
 	}
 }
+
 class Jimmy
 {
 	int health, maxHealth;
@@ -545,12 +578,14 @@ class Jimmy
 	
 	//no way an actual use for polymorphism
 	public Jimmy() {}
-	public void update(Player p) {
-	}
+	public void update(Player p) {}
 	public void render(Graphics g) {
 		g.drawImage(image,(int)x,(int)y,null);
 		bar.percent = (int)((double)health/maxHealth*100);
 		bar.render(g);
+	}
+	public void ondeath() {
+
 	}
 	public void checkHurt(Player p) {
 		boolean hurt = false;
@@ -574,11 +609,13 @@ class Jimmy
 		
 		if (hurt) {
 			health--;
+			if (health <= 0) ondeath();
 			hurtTimer = 20; //20 frames is also the length of the melee attack animation
 			image = hurtImage;
 			Sound.play();
 		}
 	}
+	void uplevel() {}
 	public void bump(ArrayList<Jimmy> jimmies) { //this stops the jimmies from going into each other and becoming indistinct
 		for (Jimmy i : jimmies) {
 			if (rect.intersects(i.rect) && x != i.x && y != i.y) { //the second and third conditions are to make it not check for itself
@@ -592,7 +629,6 @@ class Jimmy
 	}
 	
 }
-
 
 class MeleeJimmy extends Jimmy
 {
@@ -634,7 +670,6 @@ class MeleeJimmy extends Jimmy
 	}
 }
 
-
 class BigMeleeJimmy extends MeleeJimmy
 {
 	public BigMeleeJimmy(double a, double b) {
@@ -673,7 +708,6 @@ class BigMeleeJimmy extends MeleeJimmy
 		}
 	}
 }
-
 
 class LightningJimmy extends Jimmy
 {
@@ -753,7 +787,6 @@ class LightningJimmy extends Jimmy
 		bar.render(g);
 	}
 }
-
 
 class LaserJimmy extends Jimmy
 {
@@ -839,20 +872,22 @@ class TreeJimmy extends Jimmy
 		rect = new Rectangle((int)x,(int)y,150,150);
 		bar = new HealthBar((int)x,(int)y-10,300,5,100,1);
 	}
+	public void ondeath() {
+		
+		// RealFrame.room.txt = "hello";
+	}
 	public void update(Player p) { //still needs player parameter to override even though it is unused
 		cooldown++;
 		if (cooldown >= 600 + (int) (Math.random() * 500)) {
 			// RealFrame.room.jimmies.add(new LightningJimmy(Math.random()*1000+100,Math.random()*500+50));
 			for (int i = 0; i < 2; i++) {
-				RealFrame.room.jimmies.add(new Boss(Math.random()*1000+100,Math.random()*500+50, 4));
+				RealFrame.room.jimmies.add(new Boss(Math.random()*1000+100,Math.random()*600+50, 4));
 			}
 			cooldown = 0;
 		}
 		rect.setLocation((int)(x+75),(int)(y+150));
 	}
 }
-
-
 
 class Boss extends Jimmy
 {
@@ -880,7 +915,10 @@ class Boss extends Jimmy
 		y = Math.random()*450+50;
 		rect.setLocation((int)x,(int)y);
 	}
-	
+	public void ondeath() {
+		if (maxHealth == 35)
+		RealFrame.levelSwitch();
+	}
 	public void update(Player p) {
 		if (cooldown == -150) { //cooldown
 			currentAttack = (int)(Math.random()*4);
@@ -1026,11 +1064,191 @@ class Boss extends Jimmy
 	}
 }
 
+class Demon extends Jimmy{
+	int currentAttack;
+	int previousAttack;
+	ArrayList<Spike> spikePoints = new ArrayList<Spike>();
+	ArrayList<Point> shockPoints = new ArrayList<Point>();
+	
+	public Demon(double a, double b, int h) {
+		x = a;
+		y = b;
+		health = maxHealth = h;
+		knockback = 0;
+		normalImage = Sprite.demon;
+		hurtImage = Sprite.demonHurt;
+		image = normalImage;
+		rect = new Rectangle((int)x,(int)y,45,65);
+		bar = new HealthBar((int)x,(int)y-50,100,4,100,1);
+	}
+	
+	public void teleport() {
+		x = Math.random()*1000+100;
+		y = Math.random()*500+64;
+		rect.setLocation((int)x,(int)y);
+	}
+	//ah yes most consistent annotating
+	@Override
+	public void ondeath() {
+		RealFrame.levelSwitch();
+	}
+	public void update(Player p) {
+		//2 is shockwave attack
+		//1 is spikes attack
+		//0 is rush
+		if (cooldown == -150) { //cooldown
+			currentAttack = (int)(Math.random()*3);
+			if (currentAttack == previousAttack) {
+				currentAttack = (int)(Math.random()*3); //smaller chance of using the same attack twice
+			}
+			//currentAttack = 2;
+			previousAttack = currentAttack;
+			
+			//rush
+			if (currentAttack == 0) {
+				cooldown = 50;
+			}
+			//spikes
+			if (currentAttack == 1) {
+				x = RealFrame.xsz / 2;
+				y = RealFrame.ysz / 2;
+				rect.setLocation((int) x, (int) y);
+				cooldown = 300;
+				angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY());
+			}
+			if (currentAttack == 2) {
+				cooldown = 200;
+			}
+		}
+		if (currentAttack == 2 && cooldown % 10 == 0) {  //shockwave
+			// teleport();
+			angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY()) + 0.2*Math.random()-0.1;
+			Projectile shock = new Projectile(
+			new double[]{rect.getCenterX(),rect.getCenterY()},
+			new double[]{Math.sin(angle)*5,Math.cos(angle)*5},
+			new double[]{0,0},
+			"shock"
+			);
+			//System.out.println("hello" + cooldown);
+			Projectile.projectiles.add(shock);
+		}
+		if (cooldown == 0) {
+			//System.out.println("did this happen");
+			currentAttack = -1; //resting
+			//spikePoints = new ArrayList<Spike>();
+			//shockPoints = new ArrayList<Point>();
+		}
+		if (currentAttack == 1 && cooldown % 10 == 0) {
+			spikePoints.add(new Spike((int)(64 + Math.random() * 700), (int)(64 + Math.random() * 1000), 300));
+			if (cooldown % 50 == 0) {
+				spikePoints.add(new Spike(RealFrame.p.x, RealFrame.p.y, 300));
+
+			}
+		}
+
+		if (currentAttack == 0 && cooldown == 50) {
+			angle = Math.atan2(p.rect.getCenterY()-rect.getCenterY(),p.rect.getCenterX()-rect.getCenterX());
+		}
+		if (currentAttack == 0) {  //rush
+			x += Math.cos(angle)*20;
+			rect.setLocation((int)x,(int)y);
+			for (Rectangle r : RealFrame.room.walls) {
+				if (rect.intersects(r)) {
+					x -= Math.cos(angle)*20;
+					rect.setLocation((int)x,(int)y);
+				}
+			}
+
+			y += Math.sin(angle)*20;
+			rect.setLocation((int)x,(int)y);
+			for (Rectangle r : RealFrame.room.walls) {
+				if (rect.intersects(r)) {
+					y -= Math.sin(angle)*20;
+					rect.setLocation((int)x,(int)y);
+				}
+			}
+
+			if (rect.intersects(p.rect)) {
+				p.health -= 4;
+				p.hurtTimer = 1;
+				
+				p.knockback[0] = (int)(Math.cos(angle)*100);
+				p.knockback[1] = (int) (Math.sin(angle)*100);
+
+				cooldown = 1;
+
+				//cooldown = 0;
+			}
+		}
+		
+		cooldown--;
+		bar.x = (int)x-27;
+		bar.y = (int)y-20;
+		rect.setLocation((int)x,(int)y);
+	}
+	
+	public void render(Graphics g) {
+		//render projectiles
+		for (Spike s : spikePoints) {
+			s.render(g);
+			
+		}
+		for (int i=0; i<spikePoints.size(); i++) {
+			if (spikePoints.get(i).timer <= 0) {
+				spikePoints.get(i).rect = null;
+				spikePoints.remove(i);
+				i--;
+			}
+		}
+		for (int i=0; i<RealFrame.room.walls.size(); i++) {
+			if (RealFrame.room.walls.get(i) == null) {
+				RealFrame.room.walls.remove(i);
+				i--;
+			}
+		}
+		
+		
+		g.drawImage(image,(int)x,(int)y,null);
+		bar.percent = (int)((double)health/maxHealth*100);
+		bar.render(g);
+	}
+
+	class Spike {
+		int timer;
+		Rectangle rect;
+		static Image sprite1, sprite2;
+		int phase = 0;
+		int x,y;
+
+		public Spike(int a, int b, int life) {
+			sprite1 = Sprite.spike1; sprite2 = Sprite.spike2;
+			x = a; y = b; timer = life;
+			rect = new Rectangle(x,y,10,30);
+		}
+		void render(Graphics g) {
+			timer--;
+			if (timer == 200) { 
+				phase++;
+				if (rect.intersects(RealFrame.p.rect)) {
+					RealFrame.p.health -= 1;
+					RealFrame.room.walls.add(rect);
+				}
+
+			}
+			if (phase == 0) {
+				g.drawImage(sprite1, x-5, y, null);
+			}	else {
+				g.drawImage(sprite2, x-5, y, null);
+			}
+		}
+		
+	}
+}
 class Sprite
 {
 	static Image jimmyNormal, jimmyHurt, jimmyBig, jimmyBigHurt, jimmyGreen,
 	 jimmyBlue, jimmyWhite, jimmyTree, jimmyTreeHurt, boss, bossHurt, heart, soulSoil,
-	 netherrack;
+	 netherrack, demon, spike1, spike2, grass, leaves, obsidian, endstone, demonHurt;
 
 	public static void init() {
 		try {
@@ -1050,6 +1268,13 @@ class Sprite
 			heart = ImageIO.read(new File("heart.png"));
 			soulSoil = ImageIO.read(new File("soul_soil.png"));
 			netherrack = ImageIO.read(new File("netherrack.png"));
+			spike1 = heart; spike2 = boss;
+			leaves = ImageIO.read(new File("leaves.png"));
+			grass = ImageIO.read(new File("grass.png"));
+			demon = ImageIO.read(new File("demon.png"));
+			demonHurt = ImageIO.read(new File("demon-hurt.png"));
+			endstone = ImageIO.read(new File("endstone copy.png"));
+			obsidian = ImageIO.read(new File("obsidian copy.png"));
 			System.out.println("working");
 			
 			
@@ -1059,6 +1284,7 @@ class Sprite
 		}
 	}
 }
+
 class Projectile
 {
 	static ArrayList<Projectile> projectiles = new ArrayList<Projectile>();
@@ -1075,13 +1301,18 @@ class Projectile
 		acc = a;
 		type = s;
 		
-		if (type.equals("laser") || type.equals("magic") || type.equals("sword")) {
+		if (type.equals("laser") || type.equals("magic") || type.equals("sword") || type.equals("shock")) {
 			life = 99999;
 		}
 	}
 	
 	public void update() {
 		life--;
+		if (type.equals("shock")) {
+			if (RealFrame.p.rect.intersects(pos[0], pos[1], 1, 1)) {
+				RealFrame.p.health -= .1;
+			}
+		}
 		if (life > 0) {
 			pos[0] += vel[0];
 			pos[1] += vel[1];
@@ -1123,6 +1354,16 @@ class Projectile
 			
 			g.setStroke(new BasicStroke(5));
 			g.drawLine((int)(tX+vel[0]),(int)(tY+vel[1]),(int)(tX+vel[0]*2),(int)(tY+vel[1]*2));
+		}
+		if (type.equals("shock")) {
+			//help
+			int x = (int)pos[0];
+			int y = (int)pos[1];
+			
+			g.setColor(new Color(255,0,0));
+			g.setStroke(new BasicStroke(3));
+			//g.drawRect(x, y, 5, 5);
+			g.drawArc(x-15, y-15, 30, 30, (int)(Math.atan2(vel[0],vel[1])*180/Math.PI)-15, -180);
 		}
 	}
 }
