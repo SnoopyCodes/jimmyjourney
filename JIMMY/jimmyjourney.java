@@ -32,6 +32,7 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
     private Timer art;
     static int lvl;
     static Player p;
+	static boolean gg = false;
     static Level[] levels;
     static Room room;  //what room we are in
     static final int xsz = 1280, ysz = 720;
@@ -178,6 +179,10 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
     }
 
     public void paintComponent(Graphics g) {
+		if (gg) {
+			g.drawString("you saved earth from being overrun by jimmies congrats", 500, 500);
+			return;
+		}
 		for (int i = 0; i <= 1280 - 64; i += 128) {
 			for (int j = 0; j <= 720 - 64; j += 128) {
 				
@@ -873,7 +878,7 @@ class TreeJimmy extends Jimmy
 		bar = new HealthBar((int)x,(int)y-10,300,5,100,1);
 	}
 	public void ondeath() {
-		
+		RealFrame.gg = true;
 		// RealFrame.room.txt = "hello";
 	}
 	public void update(Player p) { //still needs player parameter to override even though it is unused
@@ -881,7 +886,7 @@ class TreeJimmy extends Jimmy
 		if (cooldown >= 600 + (int) (Math.random() * 500)) {
 			// RealFrame.room.jimmies.add(new LightningJimmy(Math.random()*1000+100,Math.random()*500+50));
 			for (int i = 0; i < 2; i++) {
-				RealFrame.room.jimmies.add(new Boss(Math.random()*1000+100,Math.random()*600+50, 4));
+				RealFrame.room.jimmies.add(new Boss(Math.random()*1000+100,Math.random()*600+50, 1));
 			}
 			cooldown = 0;
 		}
@@ -920,7 +925,7 @@ class Boss extends Jimmy
 		RealFrame.levelSwitch();
 	}
 	public void update(Player p) {
-		if (cooldown == -150) { //cooldown
+		if (cooldown == -300) { //cooldown
 			currentAttack = (int)(Math.random()*4);
 			if (currentAttack == previousAttack) {
 				currentAttack = (int)(Math.random()*4); //smaller chance of using the same attack twice
@@ -1078,8 +1083,8 @@ class Demon extends Jimmy{
 		normalImage = Sprite.demon;
 		hurtImage = Sprite.demonHurt;
 		image = normalImage;
-		rect = new Rectangle((int)x,(int)y,45,65);
-		bar = new HealthBar((int)x,(int)y-50,100,4,100,1);
+		rect = new Rectangle((int)x,(int)y,82,121);
+		bar = new HealthBar((int)x,(int)y-50,82,4,100,1);
 	}
 	
 	public void teleport() {
@@ -1096,7 +1101,7 @@ class Demon extends Jimmy{
 		//2 is shockwave attack
 		//1 is spikes attack
 		//0 is rush
-		if (cooldown == -150) { //cooldown
+		if (cooldown == -300) { //cooldown
 			currentAttack = (int)(Math.random()*3);
 			if (currentAttack == previousAttack) {
 				currentAttack = (int)(Math.random()*3); //smaller chance of using the same attack twice
@@ -1125,7 +1130,7 @@ class Demon extends Jimmy{
 			angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY()) + 0.2*Math.random()-0.1;
 			Projectile shock = new Projectile(
 			new double[]{rect.getCenterX(),rect.getCenterY()},
-			new double[]{Math.sin(angle)*5,Math.cos(angle)*5},
+			new double[]{Math.sin(angle)*10,Math.cos(angle)*10},
 			new double[]{0,0},
 			"shock"
 			);
@@ -1138,8 +1143,8 @@ class Demon extends Jimmy{
 			//spikePoints = new ArrayList<Spike>();
 			//shockPoints = new ArrayList<Point>();
 		}
-		if (currentAttack == 1 && cooldown % 10 == 0) {
-			spikePoints.add(new Spike((int)(64 + Math.random() * 700), (int)(64 + Math.random() * 1000), 300));
+		if (currentAttack == 1 && cooldown % 5 == 0) {
+			spikePoints.add(new Spike((int)(64 + Math.random() * 1000), (int)(64 + Math.random() * 700), 300));
 			if (cooldown % 50 == 0) {
 				spikePoints.add(new Spike(RealFrame.p.x, RealFrame.p.y, 300));
 
@@ -1182,7 +1187,7 @@ class Demon extends Jimmy{
 		}
 		
 		cooldown--;
-		bar.x = (int)x-27;
+		bar.x = (int)x;
 		bar.y = (int)y-20;
 		rect.setLocation((int)x,(int)y);
 	}
@@ -1195,19 +1200,23 @@ class Demon extends Jimmy{
 		}
 		for (int i=0; i<spikePoints.size(); i++) {
 			if (spikePoints.get(i).timer <= 0) {
-				spikePoints.get(i).rect = null;
+				//spikePoints.get(i).rect = null;
+				RealFrame.room.walls.remove(spikePoints.get(i).rect);
 				spikePoints.remove(i);
 				i--;
 			}
 		}
+
+		/* 
 		for (int i=0; i<RealFrame.room.walls.size(); i++) {
 			if (RealFrame.room.walls.get(i) == null) {
 				RealFrame.room.walls.remove(i);
 				i--;
+				System.out.println("removed");
 			}
-		}
+		}*/
 		
-		
+		g.drawRect(rect.x, rect.y, rect.width, rect.height);
 		g.drawImage(image,(int)x,(int)y,null);
 		bar.percent = (int)((double)health/maxHealth*100);
 		bar.render(g);
@@ -1227,19 +1236,22 @@ class Demon extends Jimmy{
 		}
 		void render(Graphics g) {
 			timer--;
-			if (timer == 200) { 
+			if (timer == 250) { 
 				phase++;
+				RealFrame.room.walls.add(rect);
 				if (rect.intersects(RealFrame.p.rect)) {
 					RealFrame.p.health -= 1;
-					RealFrame.room.walls.add(rect);
 				}
 
 			}
 			if (phase == 0) {
 				g.drawImage(sprite1, x-5, y, null);
+				//g.setColor(Color.GREEN);
 			}	else {
 				g.drawImage(sprite2, x-5, y, null);
+				//g.setColor(Color.RED);
 			}
+			//g.drawRect(x, y, 10, 30);
 		}
 		
 	}
@@ -1268,7 +1280,7 @@ class Sprite
 			heart = ImageIO.read(new File("heart.png"));
 			soulSoil = ImageIO.read(new File("soul_soil.png"));
 			netherrack = ImageIO.read(new File("netherrack.png"));
-			spike1 = heart; spike2 = boss;
+			spike1 = ImageIO.read(new File("spike1.png")); spike2 = ImageIO.read(new File("spike2.png"));
 			leaves = ImageIO.read(new File("leaves.png"));
 			grass = ImageIO.read(new File("grass.png"));
 			demon = ImageIO.read(new File("demon.png"));
@@ -1310,7 +1322,7 @@ class Projectile
 		life--;
 		if (type.equals("shock")) {
 			if (RealFrame.p.rect.intersects(pos[0], pos[1], 1, 1)) {
-				RealFrame.p.health -= .1;
+				RealFrame.p.health -= .2;
 			}
 		}
 		if (life > 0) {
@@ -1363,7 +1375,7 @@ class Projectile
 			g.setColor(new Color(255,0,0));
 			g.setStroke(new BasicStroke(3));
 			//g.drawRect(x, y, 5, 5);
-			g.drawArc(x-15, y-15, 30, 30, (int)(Math.atan2(vel[0],vel[1])*180/Math.PI)-15, -180);
+			g.drawArc(x-25, y-25, 50, 50, (int)(Math.atan2(vel[0],vel[1])*180/Math.PI)-15, -180);
 		}
 	}
 }
