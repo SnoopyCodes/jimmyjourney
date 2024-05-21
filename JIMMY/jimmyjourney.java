@@ -44,19 +44,22 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
         //define levels[0]
         levels[0] = new Level(Sprite.soulSoil, Sprite.netherrack);
         //define levels[1]
-        levels[1] = new Level(Sprite.soulSoil, Sprite.netherrack);
+        levels[1] = new Level(Sprite.grass, Sprite.leaves);
         //define levels[2]
-        levels[2] = new Level(Sprite.soulSoil, Sprite.netherrack);
+        levels[2] = new Level(Sprite.obsidian, Sprite.endstone);
         load();
         setSize(xsz, ysz);
 		addKeyListener(this);
         setFocusable(true);
         setVisible(true);
-        lvl = 0;
+        lvl = 1;
         room = levels[lvl].begin;
         art.start();
     }
-
+	static void levelSwitch() {
+		lvl++;
+		room = levels[lvl].begin;
+	}
     void load() throws IOException{
         int laval = 0;
         Scanner sc = new Scanner(new File("level.txt"));
@@ -95,16 +98,16 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
 						uh.jimmies.add(new Demon(xc, yc, 20));
 					}
                 }
-				uh.woll = levels[lvl].woll;
+				uh.woll = levels[laval].woll;
             }   else {
                 laval++;
             }
             bruh.close();
         }
         sc.close();
-
-		for (Room r1 : RealFrame.levels[RealFrame.lvl].rooms) {
-			for (Room r2 : RealFrame.levels[RealFrame.lvl].rooms) {
+		for (int i = 0; i < 3; i++)
+		for (Room r1 : RealFrame.levels[i].rooms) {
+			for (Room r2 : RealFrame.levels[i].rooms) {
 				if (r1.x == r2.x && r1.y == r2.y-1) {
 					r2.dWoll = false;
 				}
@@ -137,8 +140,8 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
 
 		Rectangle horizontalHole3 = new Rectangle(0,720-64,64*9,64);
 		Rectangle horizontalHole4 = new Rectangle(1280-64*9,720-64,64*9,64);
-
-		for (Room r : RealFrame.levels[RealFrame.lvl].rooms) {
+		for (int i = 0; i < 3; i++)
+		for (Room r : RealFrame.levels[i].rooms) {
 			if (r.dWoll) {
 				r.walls.add(horizontal1);
 			}
@@ -177,6 +180,7 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
     public void paintComponent(Graphics g) {
 		for (int i = 0; i <= 1280 - 64; i += 128) {
 			for (int j = 0; j <= 720 - 64; j += 128) {
+				
 				g.drawImage(levels[lvl].bg, i, j, null);
 			}
 		}
@@ -267,8 +271,10 @@ class Player {
                 attacking = true;
                 attackTimer++;
             }
-        }
-        //add swinging
+        }	else if (e.getKeyCode() == KeyEvent.VK_R) {
+			health = 20;
+			attackTimer = 0;
+		}
     }
     public void unput(KeyEvent e) {  //stuff unhappened
         if (e.getKeyCode() == (KeyEvent.VK_W)) {
@@ -432,11 +438,14 @@ class Room {
         for (int j = 0; j < jimmies.size(); j++) {
             jimmies.get(j).update(RealFrame.p);
             jimmies.get(j).checkHurt(RealFrame.p);
-			if (jimmies.get(j).health <= 0) { jimmies.remove(j); j--; continue; }
+			if (jimmies.get(j).health <= 0) {
+				jimmies.remove(j); j--;
+				continue;
+			}
             jimmies.get(j).render(g);
             jimmies.get(j).bump(jimmies);
         }
-		if (txt != "") { g.drawString(txt, sx, sy); }
+		{ g.drawString(txt, sx, sy); }
 
 		//System.out.println(lWoll + " " + rWoll + " " + uWoll + " " + dWoll);
 		//leftWoll
@@ -551,6 +560,9 @@ class Jimmy
 		bar.percent = (int)((double)health/maxHealth*100);
 		bar.render(g);
 	}
+	public void ondeath() {
+
+	}
 	public void checkHurt(Player p) {
 		boolean hurt = false;
 		
@@ -573,11 +585,13 @@ class Jimmy
 		
 		if (hurt) {
 			health--;
+			if (health <= 0) ondeath();
 			hurtTimer = 20; //20 frames is also the length of the melee attack animation
 			image = hurtImage;
 			Sound.play();
 		}
 	}
+	void uplevel() {}
 	public void bump(ArrayList<Jimmy> jimmies) { //this stops the jimmies from going into each other and becoming indistinct
 		for (Jimmy i : jimmies) {
 			if (rect.intersects(i.rect) && x != i.x && y != i.y) { //the second and third conditions are to make it not check for itself
@@ -834,12 +848,16 @@ class TreeJimmy extends Jimmy
 		rect = new Rectangle((int)x,(int)y,150,150);
 		bar = new HealthBar((int)x,(int)y-10,300,5,100,1);
 	}
+	public void ondeath() {
+		
+		// RealFrame.room.txt = "hello";
+	}
 	public void update(Player p) { //still needs player parameter to override even though it is unused
 		cooldown++;
 		if (cooldown >= 600 + (int) (Math.random() * 500)) {
 			// RealFrame.room.jimmies.add(new LightningJimmy(Math.random()*1000+100,Math.random()*500+50));
 			for (int i = 0; i < 2; i++) {
-				RealFrame.room.jimmies.add(new Boss(Math.random()*1000+100,Math.random()*500+50, 4));
+				RealFrame.room.jimmies.add(new Boss(Math.random()*1000+100,Math.random()*600+50, 4));
 			}
 			cooldown = 0;
 		}
@@ -873,7 +891,10 @@ class Boss extends Jimmy
 		y = Math.random()*450+50;
 		rect.setLocation((int)x,(int)y);
 	}
-	
+	public void ondeath() {
+		if (maxHealth == 35)
+		RealFrame.levelSwitch();
+	}
 	public void update(Player p) {
 		if (cooldown == -150) { //cooldown
 			currentAttack = (int)(Math.random()*4);
@@ -1042,7 +1063,10 @@ class Demon extends Jimmy{
 		y = Math.random()*500+64;
 		rect.setLocation((int)x,(int)y);
 	}
-	
+	@Override
+	public void ondeath() {
+		RealFrame.levelSwitch();
+	}
 	public void update(Player p) {
 		//2 is shockwave attack
 		//1 is spikes attack
@@ -1052,7 +1076,7 @@ class Demon extends Jimmy{
 			if (currentAttack == previousAttack) {
 				currentAttack = (int)(Math.random()*3); //smaller chance of using the same attack twice
 			}
-			currentAttack = 0;
+			//currentAttack = 2;
 			previousAttack = currentAttack;
 			
 			//rush
@@ -1067,30 +1091,36 @@ class Demon extends Jimmy{
 				cooldown = 300;
 				angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY());
 			}
+			if (currentAttack == 2) {
+				cooldown = 200;
+			}
 		}
-		if (currentAttack == 2 && cooldown % 50 == 0) {  //shockwave
-			teleport();
-			angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY()) + Math.random() - 0.5;
-			Projectile magic = new Projectile(
+		if (currentAttack == 2 && cooldown % 10 == 0) {  //shockwave
+			// teleport();
+			angle = Math.atan2(p.rect.getCenterX()-rect.getCenterX(),p.rect.getCenterY()-rect.getCenterY()) + 0.2*Math.random()-0.1;
+			Projectile shock = new Projectile(
 			new double[]{rect.getCenterX(),rect.getCenterY()},
 			new double[]{Math.sin(angle)*5,Math.cos(angle)*5},
 			new double[]{0,0},
-			"shockwave"
+			"shock"
 			);
-			// Projectile.projectiles.add(magic);
+			//System.out.println("hello" + cooldown);
+			Projectile.projectiles.add(shock);
 		}
 		if (cooldown == 0) {
+			//System.out.println("did this happen");
 			currentAttack = -1; //resting
-			spikePoints = new ArrayList<Spike>();
-			shockPoints = new ArrayList<Point>();
+			//spikePoints = new ArrayList<Spike>();
+			//shockPoints = new ArrayList<Point>();
 		}
 		if (currentAttack == 1 && cooldown % 10 == 0) {
-			spikePoints.add(new Spike((int)(64 + Math.random() * 700), (int)(64 + Math.random() * 700), 50));
+			spikePoints.add(new Spike((int)(64 + Math.random() * 700), (int)(64 + Math.random() * 1000), 300));
 			if (cooldown % 50 == 0) {
-				spikePoints.add(new Spike(RealFrame.p.x, RealFrame.p.y, 50));
+				spikePoints.add(new Spike(RealFrame.p.x, RealFrame.p.y, 300));
 
 			}
 		}
+
 		if (currentAttack == 0 && cooldown == 50) {
 			angle = Math.atan2(p.rect.getCenterY()-rect.getCenterY(),p.rect.getCenterX()-rect.getCenterX());
 		}
@@ -1114,11 +1144,13 @@ class Demon extends Jimmy{
 			}
 
 			if (rect.intersects(p.rect)) {
-				p.health -= 0.08;
+				p.health -= 4;
 				p.hurtTimer = 1;
 				
-				p.knockback[0] = (int)(Math.cos(angle)*30);
-				p.knockback[1] = (int) (Math.sin(angle)*30);
+				p.knockback[0] = (int)(Math.cos(angle)*100);
+				p.knockback[1] = (int) (Math.sin(angle)*100);
+
+				cooldown = 1;
 
 				//cooldown = 0;
 			}
@@ -1132,7 +1164,23 @@ class Demon extends Jimmy{
 	
 	public void render(Graphics g) {
 		//render projectiles
-		
+		for (Spike s : spikePoints) {
+			s.render(g);
+			
+		}
+		for (int i=0; i<spikePoints.size(); i++) {
+			if (spikePoints.get(i).timer <= 0) {
+				spikePoints.get(i).rect = null;
+				spikePoints.remove(i);
+				i--;
+			}
+		}
+		for (int i=0; i<RealFrame.room.walls.size(); i++) {
+			if (RealFrame.room.walls.get(i) == null) {
+				RealFrame.room.walls.remove(i);
+				i--;
+			}
+		}
 		
 		
 		g.drawImage(image,(int)x,(int)y,null);
@@ -1148,24 +1196,24 @@ class Demon extends Jimmy{
 		int x,y;
 
 		public Spike(int a, int b, int life) {
+			sprite1 = Sprite.spike1; sprite2 = Sprite.spike2;
 			x = a; y = b; timer = life;
 			rect = new Rectangle(x,y,10,30);
 		}
 		void render(Graphics g) {
 			timer--;
-			if (timer == 50) { 
+			if (timer == 200) { 
 				phase++;
 				if (rect.intersects(RealFrame.p.rect)) {
 					RealFrame.p.health -= 1;
+					RealFrame.room.walls.add(rect);
 				}
-				RealFrame.room.walls.add(rect);
 
 			}
 			if (phase == 0) {
 				g.drawImage(sprite1, x-5, y, null);
 			}	else {
 				g.drawImage(sprite2, x-5, y, null);
-
 			}
 		}
 		
@@ -1175,7 +1223,7 @@ class Sprite
 {
 	static Image jimmyNormal, jimmyHurt, jimmyBig, jimmyBigHurt, jimmyGreen,
 	 jimmyBlue, jimmyWhite, jimmyTree, jimmyTreeHurt, boss, bossHurt, heart, soulSoil,
-	 netherrack, demon;
+	 netherrack, demon, spike1, spike2, grass, leaves, obsidian, endstone;
 
 	public static void init() {
 		try {
@@ -1195,8 +1243,12 @@ class Sprite
 			heart = ImageIO.read(new File("heart.png"));
 			soulSoil = ImageIO.read(new File("soul_soil.png"));
 			netherrack = ImageIO.read(new File("netherrack.png"));
-
+			spike1 = heart; spike2 = boss;
+			leaves = ImageIO.read(new File("leaves.png"));
+			grass = ImageIO.read(new File("grass.png"));
 			demon = ImageIO.read(new File("heart.png"));
+			endstone = ImageIO.read(new File("endstone copy.png"));
+			obsidian = ImageIO.read(new File("obsidian copy.png"));
 			System.out.println("working");
 			
 			
@@ -1223,13 +1275,18 @@ class Projectile
 		acc = a;
 		type = s;
 		
-		if (type.equals("laser") || type.equals("magic") || type.equals("sword")) {
+		if (type.equals("laser") || type.equals("magic") || type.equals("sword") || type.equals("shock")) {
 			life = 99999;
 		}
 	}
 	
 	public void update() {
 		life--;
+		if (type.equals("shock")) {
+			if (RealFrame.p.rect.intersects(pos[0], pos[1], 1, 1)) {
+				RealFrame.p.health -= .1;
+			}
+		}
 		if (life > 0) {
 			pos[0] += vel[0];
 			pos[1] += vel[1];
@@ -1273,10 +1330,14 @@ class Projectile
 			g.drawLine((int)(tX+vel[0]),(int)(tY+vel[1]),(int)(tX+vel[0]*2),(int)(tY+vel[1]*2));
 		}
 		if (type.equals("shock")) {
-
-		}
-		if (type.equals("spike")) {
+			//help
+			int x = (int)pos[0];
+			int y = (int)pos[1];
 			
+			g.setColor(new Color(255,0,0));
+			g.setStroke(new BasicStroke(3));
+			//g.drawRect(x, y, 5, 5);
+			g.drawArc(x-15, y-15, 30, 30, (int)(Math.atan2(vel[0],vel[1])*180/Math.PI)-15, -180);
 		}
 	}
 }
