@@ -274,6 +274,8 @@ class Player {
         }	else if (e.getKeyCode() == KeyEvent.VK_R) {
 			health = 20;
 			attackTimer = 0;
+			attacking = true;
+			attackTimer++;
 		}
     }
     public void unput(KeyEvent e) {  //stuff unhappened
