@@ -52,7 +52,7 @@ class RealFrame extends JPanel implements ActionListener, KeyListener {
 		addKeyListener(this);
         setFocusable(true);
         setVisible(true);
-        lvl = 1;
+        lvl = 0;
         room = levels[lvl].begin;
         art.start();
     }
@@ -290,6 +290,7 @@ class Player {
         }
     }
     public void update() {
+		if (hurtTimer != 0) { hurtTimer--; }
         bar.percent = (int)(health*5);
         //pos
         if (health <= 0) {
@@ -400,31 +401,52 @@ class Player {
 
     }
     public void render(Graphics g) {
-        g.setColor(Color.BLUE);
-        //g.fillRect(x-width/2, y-height/2, width, height);//draw sword
-		g.fillRect(rect.x,rect.y,rect.width,rect.height);
-		//i died doing this
-        Graphics2D g2 = (Graphics2D)(g);
-		g2.setColor(new Color(150,100,50));
-		g2.setStroke(new BasicStroke(5));
-        int handx;
-        if (direction) {
-			handx = x+10;
+        Graphics2D g2 = (Graphics2D) g;
+		//look at how much code is for the stick figure
+		int x = (int)(this.x - rect.getWidth() / 2);
+		int y = (int)(this.y - rect.getHeight() / 2);
+		//draw body
+		if (hurtTimer != 0) {
+			g2.setColor(new Color(100,0,0));
+		}
+		else if (RealFrame.lvl == 2) {
+			g2.setColor(Color.WHITE);
 		}
 		else {
-			handx = x-10;
+			g2.setColor(Color.BLACK);
 		}
+		g2.fillOval(x,y,20,20);
+		g2.setStroke(new BasicStroke(3));
+		g2.drawLine(x+10,y+10,x+10,y+45);
+		g2.drawLine(x+10,y+45,x,y+60);
+		g2.drawLine(x+10,y+45,x+20,y+60);
+		
+		//draw arms
+		int handx;
+		if (direction) {
+			handx = x+25;
+			g2.drawLine(x+10,y+25,x+25,y+40);
+			g2.drawLine(x+10,y+35,x+25,y+40);
+		}
+		else {
+			handx = x-5;
+			g2.drawLine(x+10,y+25,x-5,y+40);
+			g2.drawLine(x+10,y+35,x-5,y+40);
+		}
+		//draw sword
+		//i died doing this
+		g2.setColor(new Color(150,100,50));
 		if (direction && !attacking) {
-			g2.drawLine(handx, y-5, handx+30, y-15);
+			g2.drawLine(handx, y+40, handx+20, y+10);
 		}
 		if (direction && attacking) {
-			g2.drawLine(handx, y-5, handx+30, y);
+			g2.drawLine(handx, y+40, handx+35, y+31);
 		}
 		if (!direction && !attacking) {
-			g2.drawLine(handx, y-5, handx-30, y-15);
+			g2.drawLine(handx, y+40, handx-20, y+10);
 		}
 		if (!direction && attacking) {
-			g2.drawLine(handx, y-5, handx-30, y);
+			g2.drawLine(handx, y+40, handx-35, y+31);
 		}
         bar.render(g);
     }
@@ -1053,8 +1075,8 @@ class Demon extends Jimmy{
 		y = b;
 		health = maxHealth = h;
 		knockback = 0;
-		normalImage = Sprite.boss;
-		hurtImage = Sprite.bossHurt;
+		normalImage = Sprite.demon;
+		hurtImage = Sprite.demonHurt;
 		image = normalImage;
 		rect = new Rectangle((int)x,(int)y,45,65);
 		bar = new HealthBar((int)x,(int)y-50,100,4,100,1);
@@ -1065,6 +1087,7 @@ class Demon extends Jimmy{
 		y = Math.random()*500+64;
 		rect.setLocation((int)x,(int)y);
 	}
+	//ah yes most consistent annotating
 	@Override
 	public void ondeath() {
 		RealFrame.levelSwitch();
@@ -1225,7 +1248,7 @@ class Sprite
 {
 	static Image jimmyNormal, jimmyHurt, jimmyBig, jimmyBigHurt, jimmyGreen,
 	 jimmyBlue, jimmyWhite, jimmyTree, jimmyTreeHurt, boss, bossHurt, heart, soulSoil,
-	 netherrack, demon, spike1, spike2, grass, leaves, obsidian, endstone;
+	 netherrack, demon, spike1, spike2, grass, leaves, obsidian, endstone, demonHurt;
 
 	public static void init() {
 		try {
@@ -1248,7 +1271,8 @@ class Sprite
 			spike1 = heart; spike2 = boss;
 			leaves = ImageIO.read(new File("leaves.png"));
 			grass = ImageIO.read(new File("grass.png"));
-			demon = ImageIO.read(new File("heart.png"));
+			demon = ImageIO.read(new File("demon.png"));
+			demonHurt = ImageIO.read(new File("demon-hurt.png"));
 			endstone = ImageIO.read(new File("endstone copy.png"));
 			obsidian = ImageIO.read(new File("obsidian copy.png"));
 			System.out.println("working");
